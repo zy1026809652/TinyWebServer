@@ -16,7 +16,7 @@ public:
     bool ModFd(int fd, uint32_t events);
     bool DelFd(int fd);
     int Wait(int timeoutMs = -1);
-    int GetEventFd(size_t i) const;
+    int GetEventFd(size_t i) const; //size_t保证不同平台一样的长度
     uint32_t GetEvents(size_t i) const;
 
 private:

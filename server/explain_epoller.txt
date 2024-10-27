@@ -1,0 +1,62 @@
+
+在一个繁忙的小镇上，有一家名为“网络咖啡馆”的地方。这家咖啡馆非常受欢迎，每天都有很多人来喝咖啡、聊天和使用互联网。咖啡馆的老板是一位名叫李明的聪明人，他负责管理所有的顾客需求。
+
+1. epoll 是什么？
+有一天，李明发现了一个问题：随着顾客越来越多，他需要同时处理很多人的点单和服务请求。如果他每次只服务一个顾客，其他顾客就会等得很不耐烦。于是，李明想到了一个办法：他请来了一个超级服务员——epoll。
+
+epoll 是一个非常聪明的服务员，它可以同时关注所有顾客的需求，并且在有新需求时立即通知李明。这样，李明就可以高效地为多个顾客提供服务，而不会遗漏任何一个人。
+
+2. 为什么需要 epoll？
+李明的困境
+传统的做法：以前，李明只能一个一个地问顾客：“您要点什么？”然后去准备，再回来问下一个顾客。这种方法效率很低，而且当顾客很多时，李明根本忙不过来。
+新的挑战：现在，顾客越来越多，而且每个人的需求都不一样。有的顾客想点咖啡，有的顾客想上网，还有的顾客只是想聊聊天。李明需要一种方法来同时管理这些不同的需求。
+epoll 的出现
+高效管理：epoll 帮助李明同时关注所有顾客的需求。如果有顾客举手示意要服务，epoll 会立刻告诉李明，这样李明可以迅速响应。
+节省资源：epoll 不需要李明为每个顾客都分配一个单独的服务员，而是由它自己来管理所有顾客的需求，大大节省了人力和时间。
+3. epoll 相比较其他方式的优缺点
+优点
+高性能：epoll 可以同时管理成千上万的顾客，而不会感到吃力。这使得李明的咖啡馆能够接待更多的客人。
+低延迟：epoll 一发现有顾客需要服务，就会立即通知李明，不会有延误。
+内存占用少：epoll 不需要为每个顾客都分配额外的空间，只需要一个小本子记录一下就可以了。
+灵活的工作模式：epoll 有两种工作模式：水平触发（Level Triggered, LT）和边缘触发（Edge Triggered, ET）。水平触发会在顾客一直举手时持续通知李明，而边缘触发只会通知一次，直到李明处理完才会再次通知。
+缺点
+平台依赖：epoll 是 Linux 系统特有的，就像李明的咖啡馆只开在 Linux 小镇上，其他小镇的人就享受不到这种服务。
+学习曲线稍陡：虽然 epoll 很强大，但刚开始使用时可能需要一些时间来熟悉它的操作方法。
+4. epoll 是怎么实现的
+创建 epoll 实例
+创建小本子：李明首先请 epoll 做了一本小本子（epoll_create1(0)），用来记录所有顾客的需求。
+Cpp
+深色版本
+int epoll_fd = epoll_create1(0);
+if (epoll_fd == -1) {
+    perror("epoll_create1");
+    exit(EXIT_FAILURE);
+}
+注册顾客
+记录顾客需求：每当有新顾客进来时，epoll 会在小本子上记下他们的需求（epoll_ctl 函数）。
+
+struct epoll_event event;
+event.data.fd = customer_fd;  // 顾客的文件描述符
+event.events = EPOLLIN;       // 监听可读事件
+if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, customer_fd, &event) == -1) {
+    perror("epoll_ctl");
+    exit(EXIT_FAILURE);
+}
+等待并处理事件
+等待并处理：epoll 会一直盯着小本子，一旦发现有顾客举手示意需要服务，就会立即通知李明（epoll_wait 函数）。
+Cpp
+深色版本
+const int max_events = 10;
+struct epoll_event events[max_events];
+int num_events = epoll_wait(epoll_fd, events, max_events, -1);
+if (num_events == -1) {
+    perror("epoll_wait");
+    exit(EXIT_FAILURE);
+}
+
+for (int i = 0; i < num_events; ++i) {
+    if (events[i].events & EPOLLIN) {
+        // 顾客有数据可读
+        handle_customer_input(events[i].data.fd);
+    }
+}

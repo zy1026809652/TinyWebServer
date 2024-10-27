@@ -84,7 +84,8 @@ bool WebServer::InitSocket_() {
                 fcntl(cfd, F_SETFL, flag);
 
                 // 将新连接的文件描述符添加到epoll实例中，监视可读事件，并设置边缘触发模式
-                if (!epoller_->AddFd(cfd, EPOLLIN | EPOLLET)) {
+                if (!epoller_->AddFd(cfd, EPOLLIN | EPOLLET)) { 
+                    //-> 运算符使得通过指针访问类成员更加简洁和直观。直接使用 epoller_->AddFd 比 (*epoller_).AddFd 更易读。
                     perror("epoll_ctl add client fd");
                     close(cfd);  // 如果添加失败，关闭文件描述符
                     continue;  // 跳过本次循环
