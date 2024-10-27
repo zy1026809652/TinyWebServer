@@ -1,0 +1,152 @@
+WebServer::WebServer(int port, int timeoutMs) : port_(port), timeoutMs_(timeoutMs), epoller_(new Epoller()) { ... }：
+参数：
+port：服务器监听的端口号。
+timeoutMs：epoll_wait 的超时时间（毫秒）。
+功能：初始化 WebServer 对象，并设置端口号和超时时间。
+成员初始化列表：
+port_(port)：将传入的端口号赋值给成员变量 port_。
+timeoutMs_(timeoutMs)：将传入的超时时间赋值给成员变量 timeoutMs_。
+epoller_(new Epoller())：创建一个新的 Epoller 对象，并将其赋值给智能指针 epoller_。
+调用 InitSocket_()：初始化套接字。
+初始化套接字
+listenFd_ = socket(AF_INET, SOCK_STREAM, 0);：
+功能：创建一个IPv4的TCP套接字。
+参数：
+AF_INET：地址族为IPv4。
+SOCK_STREAM：表示TCP协议。
+0：协议默认选择TCP。
+返回值：如果成功，返回一个有效的文件描述符；否则返回-1。
+if (listenFd_ == -1) { perror("socket"); return false; }：
+功能：检查套接字创建是否成功。
+perror("socket")：打印错误信息。
+return false：返回 false 表示初始化失败。
+setsockopt(listenFd_, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));：
+功能：设置套接字选项，允许地址重用。
+参数：
+listenFd_：套接字文件描述符。
+SOL_SOCKET：表示在套接字级别上操作。
+SO_REUSEADDR：允许地址重用。
+&optval：指向选项值的指针。
+sizeof(optval)：选项值的大小。
+struct sockaddr_in saddr;：
+功能：定义一个 sockaddr_in 结构体，用于存储服务器地址信息。
+saddr.sin_family = AF_INET;：
+功能：设置地址族为IPv4。
+saddr.sin_addr.s_addr = INADDR_ANY;：
+功能：绑定到所有可用的网络接口。
+saddr.sin_port = htons(port_);：
+功能：将端口号转换为网络字节序。
+htons：将主机字节序转换为网络字节序。
+bind(listenFd_, (struct sockaddr*)&saddr, sizeof(saddr));：
+功能：将套接字绑定到指定的地址和端口。
+参数：
+listenFd_：套接字文件描述符。
+(struct sockaddr*)&saddr：指向地址结构的指针。
+sizeof(saddr)：地址结构的大小。
+if (ret == -1) { perror("bind"); return false; }：
+功能：检查绑定是否成功。
+perror("bind")：打印错误信息。
+return false：返回 false 表示绑定失败。
+listen(listenFd_, 128);：
+功能：开始监听连接请求，最大连接数为128。
+参数：
+listenFd_：套接字文件描述符。
+128：最大连接数。
+if (ret == -1) { perror("listen"); return false; }：
+功能：检查监听是否成功。
+perror("listen")：打印错误信息。
+return false：返回 false 表示监听失败。
+if (!epoller_->AddFd(listenFd_, EPOLLIN)) { perror("epoll_ctl add"); return false; }：
+功能：将监听套接字添加到 epoll 实例中，监视可读事件。
+epoller_->AddFd(listenFd_, EPOLLIN)：调用 Epoller 类的方法，将文件描述符添加到 epoll 实例中。
+perror("epoll_ctl add")：打印错误信息。
+return false：返回 false 表示添加失败。
+主循环
+while (1) { ... }：
+功能：主循环，持续运行直到程序终止。
+int num = epoller_->Wait(timeoutMs_);：
+功能：等待并获取就绪的事件。
+epoller_->Wait(timeoutMs_)：调用 Epoller 类的方法，等待事件发生，超时时间为 timeoutMs_。
+num：返回就绪事件的数量。
+if (num == -1) { perror("epoll_wait"); exit(-1); }：
+功能：检查 epoll_wait 是否成功。
+perror("epoll_wait")：打印错误信息。
+exit(-1)：如果失败，退出程序。
+printf("num = %d\n", num);：
+功能：打印就绪事件的数量。
+for (int i = 0; i < num; ++i) { ... }：
+功能：遍历所有就绪的事件。
+int curfd = epoller_->GetEventFd(i);：
+功能：获取当前事件的文件描述符。
+if (curfd == listenFd_) { ... }：
+功能：如果是监听套接字有新的连接请求。
+int cfd = accept(listenFd_, (struct sockaddr*)&cliaddr, &len);：
+功能：接受新的连接。
+accept：接受一个新的连接请求。
+listenFd_：监听套接字文件描述符。
+(struct sockaddr*)&cliaddr：指向客户端地址结构的指针。
+&len：指向地址结构大小的指针。
+inet_ntop(AF_INET, &cliaddr.sin_addr.s_addr, cliIp, sizeof(cliIp));：
+功能：将客户端的IP地址转换为字符串格式。
+AF_INET：地址族为IPv4。
+&cliaddr.sin_addr.s_addr：指向客户端IP地址的指针。
+cliIp：存储IP地址的字符串。
+sizeof(cliIp)：字符串缓冲区的大小。
+unsigned short cliPort = ntohs(cliaddr.sin_port);：
+功能：将客户端的端口号转换为主机字节序。
+ntohs：将网络字节序转换为主机字节序。
+printf("client's ip is %s, and port is %d\n", cliIp, cliPort);：
+功能：输出客户端的信息。
+int flag = fcntl(cfd, F_GETFL);：
+功能：获取文件描述符的当前标志。
+F_GETFL：获取文件状态标志。
+flag |= O_NONBLOCK;：
+功能：添加 O_NONBLOCK 标志，设置文件描述符为非阻塞。
+fcntl(cfd, F_SETFL, flag);：
+功能：设置文件描述符的标志。
+F_SETFL：设置文件状态标志。
+if (!epoller_->AddFd(cfd, EPOLLIN | EPOLLET)) { ... }：
+功能：将新连接的文件描述符添加到 epoll 实例中，监视可读事件，并设置边缘触发模式。
+EPOLLIN：监视可读事件。
+EPOLLET：设置边缘触发模式。
+perror("epoll_ctl add client fd")：打印错误信息。
+close(cfd)：如果添加失败，关闭文件描述符。
+continue：跳过本次循环。
+if (epoller_->GetEvents(i) & EPOLLOUT) { continue; }：
+功能：检查事件类型。
+epoller_->GetEvents(i)：获取当前事件的类型。
+EPOLLOUT：写事件。
+continue：如果是写事件，跳过本次循环。
+char buf[5];：
+功能：定义一个缓冲区，用于存储读取的数据。
+while ((len = read(curfd, buf, sizeof(buf))) > 0) { ... }：
+功能：读取客户端发送的数据。
+read：从文件描述符 curfd 读取数据。
+buf：存储读取的数据。
+sizeof(buf)：缓冲区的大小。
+len：读取的字节数。
+write(STDOUT_FILENO, buf, len);：
+功能：将读取的数据输出到标准输出。
+STDOUT_FILENO：标准输出文件描述符。
+buf：要写入的数据。
+len：数据的长度。
+write(curfd, buf, len);：
+功能：将读取的数据回传给客户端。
+curfd：客户端的文件描述符。
+buf：要写入的数据。
+len：数据的长度。
+if (len == 0) { ... }：
+功能：如果读取长度为0，表示客户端关闭了连接。
+printf("client close...\n")：输出客户端关闭的信息。
+epoller_->DelFd(curfd)：从 epoll 实例中删除该文件描述符。
+close(curfd)：关闭文件描述符。
+else if (len == -1) { ... }：
+功能：如果读取失败。
+errno == EAGAIN：如果是 EAGAIN 错误，表示没有更多数据可读。
+printf("read over ...\n")：输出读取结束的信息。
+perror("read\n")：打印其他错误信息。
+exit(-1)：退出程序。
+close(listenFd_);：
+功能：关闭监听套接字。
+return true;：
+功能：返回 true 表示初始化成功。
